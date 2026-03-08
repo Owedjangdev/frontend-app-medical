@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Search, X, Phone, Calendar } from "lucide-react";
 import { listPageStyles } from "../assets/dummyStyles";
 
-const API_BASE = "http://localhost:4000/api";
+const API_BASE = "https://backend-app-medical.onrender.com/api";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITAIRES

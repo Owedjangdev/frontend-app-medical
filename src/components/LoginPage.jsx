@@ -10,7 +10,7 @@ const STORAGE_KEY    = "doctorToken_v1";   // token JWT
 const DOCTOR_ID_KEY  = "doctorId_v1";      // id du docteur connecté
 
 const LoginPage = () => {
-  const API_BASE = "http://localhost:4000";
+  const API_BASE = "https://backend-app-medical.onrender.com";
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({ email: "", password: "" });

@@ -3,7 +3,7 @@ import { homeDoctorsStyles, iconSize } from '../assets/dummyStyles';
 import { Link } from 'react-router-dom';
 import { Medal, ChevronRight, MousePointer2Off } from "lucide-react";
 
-const API_BASE = 'http://localhost:4000';
+const API_BASE = 'https://backend-app-medical.onrender.com';
 
 const HomeDoctors = ({ previewCount = 8 }) => {
     const [doctors, setDoctors] = useState([]);

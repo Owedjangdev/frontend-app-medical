@@ -6,7 +6,7 @@ import toast, { Toaster } from "react-hot-toast";
 
 import { serviceDetailStyles as s } from "../assets/dummyStyles";
 
-const DEFAULT_HOST = "http://localhost:4000".replace(/\/$/, "");
+const DEFAULT_HOST = "https://backend-app-medical.onrender.com".replace(/\/$/, "");
 
 function normDate(d) {
   const dt = new Date(d);

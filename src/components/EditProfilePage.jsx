@@ -11,7 +11,7 @@ import {
 // CONSTANTES
 // ─────────────────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "doctorToken_v1";
-const API_BASE    = "http://localhost:4000/api/docteur";
+const API_BASE    = "https://backend-app-medical.onrender.com/api/docteur";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITAIRES

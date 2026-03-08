@@ -6,7 +6,7 @@ import { MousePointer2Off } from "lucide-react";
 import {doctorsPageStyles as styles} from"../assets/dummyStyles"
 
 const DoctorsPage = () => {
-  const API_BASE = "http://localhost:4000";
+  const API_BASE = "https://backend-app-medical.onrender.com";
 
   const [allDoctors, setAllDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
