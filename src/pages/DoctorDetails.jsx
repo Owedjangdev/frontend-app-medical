@@ -19,7 +19,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://backend-app-medical.onrender.com";
 
 // ✅ CORRECTION: suppression du filtre regex /^\d{4}-\d{2}-\d{2}$/ qui bloquait les clés
 function normalizeSchedule(raw) {
