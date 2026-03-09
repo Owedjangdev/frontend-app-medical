@@ -1,73 +1,94 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE = "https://backend-app-medical.onrender.com";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://backend-app-medical.onrender.com";
 
 const VerifyPaymentPage = () => {
-    
-  console.log("✅ VerifyPaymentPage monté !");  // ← ajoute cette ligne
-  
-    const location = useLocation();
-    const navigate = useNavigate();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [status, setStatus] = useState("Vérification du paiement...");
+  const [error, setError] = useState(null);
 
-    useEffect(() => {
-        let cancelled = false;
+  useEffect(() => {
+    let cancelled = false;
 
-        const varifyPayment = async () => {
-            const params = new URLSearchParams(location.search || "");
-            const sessionId = params.get("session_id");
+    const verifyPayment = async () => {
+      // 1. Cas annulation
+      if (location.pathname === '/appointment/cancel') {
+        setStatus("Paiement annulé.");
+        setTimeout(() => {
+          if (!cancelled) navigate("/appointments?payment_status=Cancelled", { replace: true });
+        }, 1500);
+        return;
+      }
 
-            // Gestion de l'annulation via le chemin URL
-            if (location.pathname === '/appointment/cancel') {
-                if (!cancelled) {
-                    navigate("/appointments?payment_status=Cancelled", { replace: true });
-                    return;
-                }
-            }
+      // 2. Récupérer session_id
+      const params = new URLSearchParams(location.search || "");
+      const sessionId = params.get("session_id");
 
-            // Vérification de la présence du session_id
-            if (!sessionId) {
-                if (!cancelled) {
-                    navigate("/appointments?payment_status=Failed", { replace: true });
-                    return;
-                }
-            }
+      if (!sessionId) {
+        setError("session_id manquant dans l'URL.");
+        setTimeout(() => {
+          if (!cancelled) navigate("/appointments?payment_status=Failed", { replace: true });
+        }, 2000);
+        return;
+      }
 
-            try {
-                // Appel API pour confirmer le paiement
-                const res = await axios.get(`${API_BASE}/api/appointments/verify`, {
-                    params: { session_id: sessionId },
-                    timeout: 15000,
-                });
+      setStatus("Confirmation du paiement en cours...");
 
-                if (cancelled) return;
+      // 3. Confirmer le paiement
+      try {
+        const res = await axios.get(`${API_BASE}/api/appointments/verify`, {
+          params: { session_id: sessionId },
+          timeout: 15000,
+        });
 
-                // Redirection selon le succès de la réponse
-                if (res?.data?.success) {
-                    navigate("/appointments?payment_status=Paid", { replace: true });
-                } else {
-                    navigate("/appointments?payment_status=Failed", { replace: true });
-                }
+        if (cancelled) return;
 
-            } catch (error) {
-                // Gestion des erreurs de l'appel API
-                console.error("Payment verification failed:", error);
-                if (!cancelled) {
-                    navigate("/appointments?payment_status=Failed", { replace: true });
-                }
-            }
-        };
+        if (res?.data?.success) {
+          setStatus("Paiement confirmé ! Redirection...");
+          setTimeout(() => {
+            if (!cancelled) navigate("/appointments?payment_status=Paid", { replace: true });
+          }, 1000);
+        } else {
+          setError(`Échec: ${res?.data?.message || "Réponse inattendue"}`);
+          setTimeout(() => {
+            if (!cancelled) navigate("/appointments?payment_status=Failed", { replace: true });
+          }, 2000);
+        }
+      } catch (err) {
+        if (cancelled) return;
 
-        varifyPayment();
+        if (err?.response?.status === 409) {
+          setStatus("Paiement déjà confirmé ! Redirection...");
+          setTimeout(() => {
+            if (!cancelled) navigate("/appointments?payment_status=Paid", { replace: true });
+          }, 1000);
+          return;
+        }
 
-        // Nettoyage pour éviter les fuites de mémoire
-        return () => {
-            cancelled = true;
-        };
-    }, [location, navigate]);
+        const msg = err?.response?.data?.message || err?.message || "Erreur réseau";
+        setError(`Erreur: ${msg}`);
+        setTimeout(() => {
+          if (!cancelled) navigate("/appointments?payment_status=Failed", { replace: true });
+        }, 2000);
+      }
+    };
 
-    return null;
+    verifyPayment();
+    return () => { cancelled = true; };
+  }, [location, navigate]);
+
+  return (
+    <div style={{ textAlign: "center", padding: "50px" }}>
+      {error ? (
+        <p style={{ color: "red" }}>{error}</p>
+      ) : (
+        <p>{status}</p>
+      )}
+    </div>
+  );
 };
 
 export default VerifyPaymentPage;
