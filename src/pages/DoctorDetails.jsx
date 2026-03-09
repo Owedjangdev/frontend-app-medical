@@ -253,41 +253,46 @@ export default function DoctorDetail() {
     };
 
     try {
-      const token = await getToken();
-      if (!token) throw new Error("Failed to obtain authentication token.");
-      const res = await fetch(`${API_BASE}/api/appointments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        toast.error(
-          body?.message || body?.error || `Booking failed (${res.status})`,
-          { position: "top-center" }
-        );
-        setIsSubmitting(false);
-        return;
-      }
-      if (body?.checkoutUrl) {
-        window.location.href = body.checkoutUrl;
-        return;
-      }
-      toast.success("Booking successful", {
-        position: "top-center",
-        autoClose: 1500,
-      });
-      setTimeout(() => {
-        window.location.href = "/appointments?payment_status=Pending";
-      }, 700);
-    } catch (err) {
-      toast.error(err?.message || "Network error - booking failed", {
-        position: "top-center",
-      });
-    } finally {
+  const token = await getToken();
+  if (!token) throw new Error("Failed to obtain authentication token.");
+  const res = await fetch(`${API_BASE}/api/appointments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => null);
+  
+  console.log("📦 Response body:", body); // ← AJOUTER
+  console.log("📦 Response status:", res.status); // ← AJOUTER
+  
+  if (!res.ok) {
+    toast.error(
+      body?.message || body?.error || `Booking failed (${res.status})`,
+      { position: "top-center" }
+    );
+    setIsSubmitting(false);
+    return;
+  }
+  if (body?.checkoutUrl) {
+    window.location.href = body.checkoutUrl;
+    return;
+  }
+  toast.success("Booking successful", {
+    position: "top-center",
+    autoClose: 1500,
+  });
+  setTimeout(() => {
+    window.location.href = "/appointments?payment_status=Pending";
+  }, 700);
+} catch (err) {
+  console.error("❌ Booking error:", err); // ← AJOUTER
+  toast.error(err?.message || "Network error - booking failed", {
+    position: "top-center",
+  });
+}finally {
       setIsSubmitting(false);
     }
   };
