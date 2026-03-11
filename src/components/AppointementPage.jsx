@@ -16,79 +16,139 @@ import {
 } from "../assets/dummyStyles";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CONFIG
+// CONFIGURATION
 // ─────────────────────────────────────────────────────────────────────────────
-const API_BASE = "https://backend-app-medical.onrender.com";
-const API = axios.create({ baseURL: API_BASE });
+const API_BASE_URL = "https://backend-app-medical.onrender.com";
+const API_CLIENT = axios.create({ baseURL: API_BASE_URL });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// UTILS
+// CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
-function pad(n) { return String(n).padStart(2, "0"); }
+const MONTH_MAP = {
+  Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+  Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+};
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_SEPARATOR = ":";
+const SPACE_SEPARATOR = " ";
+const APPOINTMENT_STATUS_CANCELED = ["Canceled", "Annuler"];
+const APPOINTMENT_STATUS_COMPLETED = ["Completed", "Completer"];
+const APPOINTMENT_STATUS_RESCHEDULED = ["Rescheduled", "Reprogrammer"];
+const APPOINTMENT_STATUS_CONFIRMED = ["Confirmed", "Confirmer"];
+const PAYMENT_METHOD_ONLINE = ["En ligne", "Online"];
+const DEFAULT_HOUR = 0;
+const HOURS_IN_12HOUR_FORMAT = 12;
 
-function parseDateTime(dateStr, timeStr) {
-  if (!dateStr) return new Date(0);
-  const direct = new Date(`${dateStr} ${timeStr || ""}`);
-  if (!isNaN(direct)) return direct;
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILITY FUNCTIONS
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const parts = (dateStr || "").split(" ");
-  if (parts.length === 3) {
-    const [d, m, y] = parts;
-    const months = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 };
-    const month = months[m];
-    if (month === undefined) return new Date(0);
-    let [t, ampm] = (timeStr || "0:00 AM").split(" ");
-    let [hh, mm] = (t || "0:00").split(":");
-    hh = Number(hh) || 0; mm = Number(mm) || 0;
-    if (ampm === "PM" && hh < 12) hh += 12;
-    if (ampm === "AM" && hh === 12) hh = 0;
-    return new Date(Number(y), month, Number(d), hh, mm);
-  }
-  return new Date(0);
+/**
+ * Formats a number with leading zeros (e.g., 5 -> "05")
+ */
+function padNumberWithZeros(number) {
+  return String(number).padStart(2, "0");
 }
 
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const d = new Date(Date.UTC(year, month - 1, day));
-  return d.toLocaleDateString("en-US", {
-    weekday: "short", month: "short", day: "numeric", timeZone: "UTC",
+/**
+ * Converts date string (DD Mon YYYY) and time string to Date object
+ */
+function parseDateTime(dateString, timeString) {
+  if (!dateString) return new Date(0);
+
+  // Try direct parsing first
+  const directParseDate = new Date(`${dateString} ${timeString || ""}`);
+  if (!isNaN(directParseDate)) return directParseDate;
+
+  // Parse format: "15 Jan 2024"
+  const dateComponents = (dateString || "").split(SPACE_SEPARATOR);
+  if (dateComponents.length !== 3) return new Date(0);
+
+  const [dayString, monthName, yearString] = dateComponents;
+  const monthIndex = MONTH_MAP[monthName];
+  if (monthIndex === undefined) return new Date(0);
+
+  const [timeComponent, period] = (timeString || "0:00 AM").split(SPACE_SEPARATOR);
+  let [hours, minutes] = (timeComponent || "0:00").split(TIME_SEPARATOR);
+  hours = Number(hours) || DEFAULT_HOUR;
+  minutes = Number(minutes) || 0;
+
+  // Convert 12-hour to 24-hour format
+  if (period === "PM" && hours < HOURS_IN_12HOUR_FORMAT) hours += HOURS_IN_12HOUR_FORMAT;
+  if (period === "AM" && hours === HOURS_IN_12HOUR_FORMAT) hours = 0;
+
+  return new Date(Number(yearString), monthIndex, Number(dayString), hours, minutes);
+}
+
+/**
+ * Formats ISO date (YYYY-MM-DD) to readable format (Mon, 15 Jan)
+ */
+function formatDateToReadable(isoDateString) {
+  if (!isoDateString) return "";
+  if (!ISO_DATE_PATTERN.test(isoDateString)) return isoDateString;
+
+  const [year, monthString, dayString] = isoDateString.split("-").map(Number);
+  const dateObject = new Date(Date.UTC(year, monthString - 1, dayString));
+
+  return dateObject.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
   });
 }
 
-function computeStatus(item) {
-  if (!item) return "Pending";
-  const now = new Date();
-  const raw = item.status || "";
+/**
+ * Determines appointment status based on appointment data and current time
+ */
+function computeAppointmentStatus(appointment) {
+  if (!appointment) return "Pending";
 
-  if (raw === "Canceled"  || raw === "Annuler")      return "Canceled";
-  if (raw === "Completed" || raw === "Completer")    return "Completed";
+  const currentTime = new Date();
+  const appointmentStatus = appointment.status || "";
 
-  if (raw === "Rescheduled" || raw === "Reprogrammer") {
-    if (item.rescheduledTo?.date && item.rescheduledTo?.time) {
-      if (now >= parseDateTime(item.rescheduledTo.date, item.rescheduledTo.time)) return "Completed";
+  if (APPOINTMENT_STATUS_CANCELED.includes(appointmentStatus)) return "Canceled";
+  if (APPOINTMENT_STATUS_COMPLETED.includes(appointmentStatus)) return "Completed";
+
+  if (APPOINTMENT_STATUS_RESCHEDULED.includes(appointmentStatus)) {
+    const { date: rescheduledDate, time: rescheduledTime } = appointment.rescheduledTo || {};
+    if (rescheduledDate && rescheduledTime) {
+      const rescheduledDateTime = parseDateTime(rescheduledDate, rescheduledTime);
+      if (currentTime >= rescheduledDateTime) return "Completed";
     }
     return "Rescheduled";
   }
 
-  if (raw === "Confirmed" || raw === "Confirmer") {
-    return now >= parseDateTime(item.date, item.time) ? "Completed" : "Confirmed";
+  if (APPOINTMENT_STATUS_CONFIRMED.includes(appointmentStatus)) {
+    const appointmentDateTime = parseDateTime(appointment.date, appointment.time);
+    return currentTime >= appointmentDateTime ? "Completed" : "Confirmed";
   }
 
-  if (now >= parseDateTime(item.date, item.time)) return "Completed";
-  return item.confirmed ? "Confirmed" : "Pending";
+  const appointmentDateTime = parseDateTime(appointment.date, appointment.time);
+  if (currentTime >= appointmentDateTime) return "Completed";
+  return appointment.confirmed ? "Confirmed" : "Pending";
 }
 
-function normalizePaymentMethod(method) {
-  if (!method) return "Cash";
-  if (method === "En ligne" || method === "Online") return "Online";
+/**
+ * Normalizes payment method to standard format
+ */
+function normalizePaymentMethod(paymentMethod) {
+  if (!paymentMethod) return "Cash";
+  if (PAYMENT_METHOD_ONLINE.includes(paymentMethod)) return "Online";
   return "Cash";
 }
 
-function normalizeRescheduled(rt) {
-  if (!rt) return null;
-  if (rt.date && rt.time) return { date: rt.date, time: rt.time };
+/**
+ * Validates and returns rescheduled appointment data
+ */
+function extractRescheduledAppointment(rescheduledData) {
+  if (!rescheduledData) return null;
+  if (rescheduledData.date && rescheduledData.time) {
+    return {
+      date: rescheduledData.date,
+      time: rescheduledData.time,
+    };
+  }
   return null;
 }
 
@@ -136,9 +196,9 @@ function DoctorCard({ item }) {
         <p className={cardStyles.specialization}>{item.specialization}</p>
       )}
       <p className={cardStyles.dateContainer}>
-        <CalendarDays className={iconSize.medium} />
-        {formatDate(item.date)}
-      </p>
+         <CalendarDays className={iconSize.medium} />
+         {formatDateToReadable(item.date)}
+       </p>
       <p className={cardStyles.timeContainer}>
         <Clock className={iconSize.medium} />
         {item.time}
@@ -151,7 +211,7 @@ function DoctorCard({ item }) {
         <div className={cardStyles.rescheduledText}>
           Rescheduled to{" "}
           <span className={cardStyles.rescheduledSpan}>
-            {formatDate(item.rescheduledTo.date)} · {item.rescheduledTo.time}
+            {formatDateToReadable(item.rescheduledTo.date)} · {item.rescheduledTo.time}
           </span>
         </div>
       )}
@@ -173,9 +233,9 @@ function ServiceCard({ item }) {
         <p className={cardStyles.price}>₹{item.price}</p>
       )}
       <div className={cardStyles.serviceDateContainer}>
-        <CalendarDays className={iconSize.medium} />
-        {formatDate(item.date)}
-      </div>
+         <CalendarDays className={iconSize.medium} />
+         {formatDateToReadable(item.date)}
+       </div>
       <div className={cardStyles.serviceTimeContainer}>
         <Clock className={iconSize.medium} />
         {item.time}
@@ -188,7 +248,7 @@ function ServiceCard({ item }) {
         <div className={cardStyles.serviceRescheduledText}>
           Rescheduled to{" "}
           <span className={cardStyles.rescheduledSpan}>
-            {formatDate(item.rescheduledTo.date)} · {item.rescheduledTo.time}
+            {formatDateToReadable(item.rescheduledTo.date)} · {item.rescheduledTo.time}
           </span>
         </div>
       )}
@@ -247,28 +307,28 @@ const AppointementPage = () => {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     try {
-      const resp    = await API.get("/api/appointments/me", { headers });
-      const fetched = resp?.data?.appointments ?? resp?.data?.data ?? resp?.data ?? [];
-      const arr     = Array.isArray(fetched) ? fetched : [];
-      setDoctorAppts(arr.filter((a) => (a.doctorId != null) || !!a.doctorName || !a.serviceId));
-    } catch {
-      if (user?.id) {
-        try {
-          const r2      = await API.get(`/api/appointments/me?createdBy=${user.id}`, { headers });
-          const fetched = r2?.data?.appointments ?? r2?.data?.data ?? r2?.data ?? [];
-          const arr     = Array.isArray(fetched) ? fetched : [];
-          setDoctorAppts(arr.filter((a) => (a.doctorId != null) || !!a.doctorName || !a.serviceId));
-        } catch {
-          setError("Failed to load doctor appointments.");
-          setDoctorAppts([]);
-        }
-      } else {
-        setError("Failed to load doctor appointments.");
-        setDoctorAppts([]);
-      }
-    } finally {
-      setLoadingDoctors(false);
-    }
+       const response = await API_CLIENT.get("/api/appointments/me", { headers });
+       const fetchedAppointments = response?.data?.appointments ?? response?.data?.data ?? response?.data ?? [];
+       const appointmentList = Array.isArray(fetchedAppointments) ? fetchedAppointments : [];
+       setDoctorAppts(appointmentList.filter((a) => (a.doctorId != null) || !!a.doctorName || !a.serviceId));
+     } catch {
+       if (user?.id) {
+         try {
+           const retryResponse = await API_CLIENT.get(`/api/appointments/me?createdBy=${user.id}`, { headers });
+           const fetchedAppointments = retryResponse?.data?.appointments ?? retryResponse?.data?.data ?? retryResponse?.data ?? [];
+           const appointmentList = Array.isArray(fetchedAppointments) ? fetchedAppointments : [];
+           setDoctorAppts(appointmentList.filter((a) => (a.doctorId != null) || !!a.doctorName || !a.serviceId));
+         } catch {
+           setError("Failed to load doctor appointments.");
+           setDoctorAppts([]);
+         }
+       } else {
+         setError("Failed to load doctor appointments.");
+         setDoctorAppts([]);
+       }
+     } finally {
+       setLoadingDoctors(false);
+     }
   }, [isLoaded, getToken, user]);
 
   // ── Fetch services ──────────────────────────────────────────────────────────
@@ -281,20 +341,20 @@ const AppointementPage = () => {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     try {
-      const resp    = await API.get("/api/service-appointments/me", { headers });
-      const fetched = resp?.data?.appointments ?? resp?.data?.data ?? resp?.data ?? [];
-      setServiceAppts(Array.isArray(fetched) ? fetched : []);
-    } catch {
-      if (user?.id) {
-        try {
-          const r2      = await API.get(`/api/service-appointments/me?createdBy=${user.id}`, { headers });
-          const fetched = r2?.data?.appointments ?? r2?.data?.data ?? r2?.data ?? [];
-          setServiceAppts(Array.isArray(fetched) ? fetched : []);
-        } catch { setServiceAppts([]); }
-      } else { setServiceAppts([]); }
-    } finally {
-      setLoadingServices(false);
-    }
+       const response = await API_CLIENT.get("/api/service-appointments/me", { headers });
+       const fetchedAppointments = response?.data?.appointments ?? response?.data?.data ?? response?.data ?? [];
+       setServiceAppts(Array.isArray(fetchedAppointments) ? fetchedAppointments : []);
+     } catch {
+       if (user?.id) {
+         try {
+           const retryResponse = await API_CLIENT.get(`/api/service-appointments/me?createdBy=${user.id}`, { headers });
+           const fetchedAppointments = retryResponse?.data?.appointments ?? retryResponse?.data?.data ?? retryResponse?.data ?? [];
+           setServiceAppts(Array.isArray(fetchedAppointments) ? fetchedAppointments : []);
+         } catch { setServiceAppts([]); }
+       } else { setServiceAppts([]); }
+     } finally {
+       setLoadingServices(false);
+     }
   }, [isLoaded, getToken, user]);
 
   // 🔍 DEBUG — à supprimer après diagnostic
@@ -308,40 +368,94 @@ const AppointementPage = () => {
       loadServiceAppointments();
     }
   }, [isLoaded, isSignedIn, user, loadDoctorAppointments, loadServiceAppointments]);
-  // ── Normalisation médecins ──────────────────────────────────────────────────
+  // Normalize doctor appointments data for display
   const appointmentData = useMemo(() => {
-    return doctorAppts.map((a) => {
-      const doctorObj = (typeof a.doctorId === "object" && a.doctorId) ? a.doctorId : {};
-      const image     = doctorObj.imageUrl || doctorObj.image || doctorObj.avatar || a.doctorImage?.url || a.doctorImage || "";
-      const doctorName =
-        (doctorObj.name  && String(doctorObj.name).trim())  ||
-        (a.doctorName    && String(a.doctorName).trim())    ||
-        (a.doctor        && String(a.doctor).trim())        || "Doctor";
-      const specialization = doctorObj.specialization || a.specialization || a.speciality || "";
-      const date           = a.date || "";
-      let   time           = a.time || "";
-      if (!time && a.hour !== undefined && a.ampm) time = `${a.hour}:${pad(a.minute ?? 0)} ${a.ampm}`;
-      const payment        = a.payment?.method || "Cash";
-      const rescheduledTo  = normalizeRescheduled(a.rescheduledTo || { date: a.rescheduledDate, time: a.rescheduledTime });
-      const item = { id: String(a._id || a.id || ""), image, doctorName, specialization, date, time, payment, rescheduledTo, status: a.status || "" };
-      return { ...item, status: computeStatus(item) };
+    return doctorAppts.map((appointmentRecord) => {
+      const doctorObject = (typeof appointmentRecord.doctorId === "object" && appointmentRecord.doctorId) 
+        ? appointmentRecord.doctorId 
+        : {};
+      const doctorImageUrl = 
+        doctorObject.imageUrl || 
+        doctorObject.image || 
+        doctorObject.avatar || 
+        appointmentRecord.doctorImage?.url || 
+        appointmentRecord.doctorImage || 
+        "";
+      const extractedDoctorName =
+        (doctorObject.name && String(doctorObject.name).trim()) ||
+        (appointmentRecord.doctorName && String(appointmentRecord.doctorName).trim()) ||
+        (appointmentRecord.doctor && String(appointmentRecord.doctor).trim()) || 
+        "Doctor";
+      const doctorSpecialization = 
+        doctorObject.specialization || 
+        appointmentRecord.specialization || 
+        appointmentRecord.speciality || 
+        "";
+      const appointmentDate = appointmentRecord.date || "";
+      let appointmentTime = appointmentRecord.time || "";
+      if (!appointmentTime && appointmentRecord.hour !== undefined && appointmentRecord.ampm) {
+        appointmentTime = `${appointmentRecord.hour}:${padNumberWithZeros(appointmentRecord.minute ?? 0)} ${appointmentRecord.ampm}`;
+      }
+      const paymentMethod = appointmentRecord.payment?.method || "Cash";
+      const rescheduledData = extractRescheduledAppointment(
+        appointmentRecord.rescheduledTo || { 
+          date: appointmentRecord.rescheduledDate, 
+          time: appointmentRecord.rescheduledTime 
+        }
+      );
+      const normalizedAppointment = { 
+        id: String(appointmentRecord._id || appointmentRecord.id || ""), 
+        image: doctorImageUrl, 
+        doctorName: extractedDoctorName, 
+        specialization: doctorSpecialization, 
+        date: appointmentDate, 
+        time: appointmentTime, 
+        payment: paymentMethod, 
+        rescheduledTo: rescheduledData, 
+        status: appointmentRecord.status || "" 
+      };
+      return { ...normalizedAppointment, status: computeAppointmentStatus(normalizedAppointment) };
     });
   }, [doctorAppts]);
 
-  // ── Normalisation services ──────────────────────────────────────────────────
+  // Normalize service appointments data for display
   const serviceData = useMemo(() => {
-    return serviceAppts.map((s) => {
-      const svc   = (typeof s.serviceId === "object" && s.serviceId) ? s.serviceId : {};
-      const image = svc.imageUrl || svc.image || svc.imageSmall || s.serviceImage?.url || s.serviceImage || "";
-      const name  = s.serviceName || svc.name || svc.title || "Service";
-      const price = s.fees ?? s.amount ?? s.price ?? 0;
-      const date  = s.date || "";
-      let   time  = s.time || "";
-      if (!time && s.hour !== undefined && s.ampm) time = `${s.hour}:${pad(s.minute ?? 0)} ${s.ampm}`;
-      const payment       = s.payment?.method || "Cash";
-      const rescheduledTo = normalizeRescheduled(s.rescheduledTo || null);
-      const item = { id: String(s._id || s.id || ""), image, name, price, date, time, payment, rescheduledTo, status: s.status || "" };
-      return { ...item, status: computeStatus(item) };
+    return serviceAppts.map((serviceRecord) => {
+      const serviceObject = (typeof serviceRecord.serviceId === "object" && serviceRecord.serviceId) 
+        ? serviceRecord.serviceId 
+        : {};
+      const serviceImageUrl = 
+        serviceObject.imageUrl || 
+        serviceObject.image || 
+        serviceObject.imageSmall || 
+        serviceRecord.serviceImage?.url || 
+        serviceRecord.serviceImage || 
+        "";
+      const serviceName = 
+        serviceRecord.serviceName || 
+        serviceObject.name || 
+        serviceObject.title || 
+        "Service";
+      const servicePrice = serviceRecord.fees ?? serviceRecord.amount ?? serviceRecord.price ?? 0;
+      const appointmentDate = serviceRecord.date || "";
+      let appointmentTime = serviceRecord.time || "";
+      if (!appointmentTime && serviceRecord.hour !== undefined && serviceRecord.ampm) {
+        appointmentTime = `${serviceRecord.hour}:${padNumberWithZeros(serviceRecord.minute ?? 0)} ${serviceRecord.ampm}`;
+      }
+      const paymentMethod = serviceRecord.payment?.method || "Cash";
+      const rescheduledData = extractRescheduledAppointment(serviceRecord.rescheduledTo || null);
+      const normalizedService = { 
+        id: String(serviceRecord._id || serviceRecord.id || ""), 
+        image: serviceImageUrl, 
+        name: serviceName, 
+        price: servicePrice, 
+        date: appointmentDate, 
+        time: appointmentTime, 
+        payment: paymentMethod, 
+        rescheduledTo: rescheduledData, 
+        status: serviceRecord.status || "" 
+      };
+      return { ...normalizedService, status: computeAppointmentStatus(normalizedService) };
     });
   }, [serviceAppts]);
 

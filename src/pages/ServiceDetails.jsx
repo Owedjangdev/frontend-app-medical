@@ -208,24 +208,24 @@ export default function ServiceDetail() {
   const availableSlots = (selectedDate && service?.slots?.[selectedDate]) || [];
 
   /* ── loading ────────────────────────────────────────────── */
-  if (loading) return (
-    <div className={s.loadingContainer}>
-      <div className={s.loadingCard}>
-        <h2 className={s.loadingTitle}>Loading service…</h2>
-        <p className={s.loadingText}>Fetching details from server</p>
-      </div>
-    </div>
-  );
+   if (loading) return (
+     <div className={s.loadingContainer}>
+       <div className={s.loadingCard}>
+         <h2 className={s.loadingTitle}>Chargement du service…</h2>
+         <p className={s.loadingText}>Récupération des détails du serveur</p>
+       </div>
+     </div>
+   );
 
-  if (!service) return (
-    <div className={s.loadingContainer}>
-      <div className={s.loadingCard}>
-        <h2 className={s.loadingTitle}>Service not found</h2>
-        <p className={s.loadingText}>Please go back and select a valid service.</p>
-        <Link to="/services" className={s.backToServices}>Back to Services</Link>
-      </div>
-    </div>
-  );
+   if (!service) return (
+     <div className={s.loadingContainer}>
+       <div className={s.loadingCard}>
+         <h2 className={s.loadingTitle}>Service non trouvé</h2>
+         <p className={s.loadingText}>Veuillez revenir en arrière et sélectionner un service valide.</p>
+         <Link to="/services" className={s.backToServices}>Retour aux Services</Link>
+       </div>
+     </div>
+   );
 
   /* ── render ─────────────────────────────────────────────── */
   return (
@@ -236,7 +236,7 @@ export default function ServiceDetail() {
       <nav className={s.navBar}>
         <div className={s.navContainer}>
           <button className={s.backButton} onClick={() => navigate(-1)}>
-            <ArrowLeft size={15} /> Back
+            <ArrowLeft size={15} /> Retour
           </button>
         </div>
       </nav>
@@ -251,85 +251,85 @@ export default function ServiceDetail() {
           <div className={s.imageContainer}>
             {service.image
               ? <img src={service.image} alt={service.imageAlt} className={s.image} />
-              : <span className="text-emerald-300 text-sm">No image</span>
+              : <span className="text-emerald-300 text-sm">Aucune image</span>
             }
           </div>
 
           {/* Your Details */}
           <div className={s.detailsContainer}>
             <p className={s.detailsTitle}>
-              <Phone size={15} /> Your Details
+              <Phone size={15} /> Vos informations
             </p>
             <div className={s.detailsGrid}>
 
               <input
-                type="text"
-                placeholder="Full Name *"
-                value={patientName}
-                onChange={(e) => setPatientName(e.target.value)}
-                className={!patientName.trim() && submitError ? s.invalidInput : s.input}
-              />
+                 type="text"
+                 placeholder="Nom complet *"
+                 value={patientName}
+                 onChange={(e) => setPatientName(e.target.value)}
+                 className={!patientName.trim() && submitError ? s.invalidInput : s.input}
+               />
 
-              <input
-                type="tel"
-                placeholder="Mobile (10 digits) *"
-                value={mobile}
-                maxLength={10}
-                onChange={(e) => setMobile(e.target.value.replace(/\D/g, ""))}
-                className={mobile && !okMobile(mobile) ? s.invalidInput : s.input}
-              />
+               <input
+                 type="tel"
+                 placeholder="Téléphone (10 chiffres) *"
+                 value={mobile}
+                 maxLength={10}
+                 onChange={(e) => setMobile(e.target.value.replace(/\D/g, ""))}
+                 className={mobile && !okMobile(mobile) ? s.invalidInput : s.input}
+               />
 
-              <input
-                type="number"
-                placeholder="Age *"
-                value={age}
-                min={1}
-                max={149}
-                onChange={(e) => setAge(e.target.value)}
-                className={age && !okAge(age) ? s.invalidInput : s.input}
-              />
+               <input
+                 type="number"
+                 placeholder="Âge *"
+                 value={age}
+                 min={1}
+                 max={149}
+                 onChange={(e) => setAge(e.target.value)}
+                 className={age && !okAge(age) ? s.invalidInput : s.input}
+               />
 
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
-                className={!gender && submitError ? s.invalidInput : s.input}
-              >
-                <option value="">Select Gender *</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
+               <select
+                 value={gender}
+                 onChange={(e) => setGender(e.target.value)}
+                 className={!gender && submitError ? s.invalidInput : s.input}
+               >
+                 <option value="">Sélectionner le sexe *</option>
+                 <option value="Male">Homme</option>
+                 <option value="Female">Femme</option>
+                 <option value="Other">Autre</option>
+               </select>
 
-              <input
-                type="email"
-                placeholder="Email (optional)"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={s.emailInput}
-              />
+               <input
+                 type="email"
+                 placeholder="Email (optionnel)"
+                 value={email}
+                 onChange={(e) => setEmail(e.target.value)}
+                 className={s.emailInput}
+               />
             </div>
 
             {/* Payment Method */}
-            <div className="mt-4">
-              <span className={s.paymentLabel}>Payment Method</span>
-              <div className={s.paymentOptions}>
-                {["Cash", "Online"].map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setPaymentMethod(m)}
-                    className={s.paymentOption(paymentMethod === m)}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-            </div>
+             <div className="mt-4">
+               <span className={s.paymentLabel}>Mode de paiement</span>
+               <div className={s.paymentOptions}>
+                 {[{ key: "Cash", label: "Espèces" }, { key: "Online", label: "En ligne" }].map((m) => (
+                   <button
+                     key={m.key}
+                     type="button"
+                     onClick={() => setPaymentMethod(m.key)}
+                     className={s.paymentOption(paymentMethod === m.key)}
+                   >
+                     {m.label}
+                   </button>
+                 ))}
+               </div>
+             </div>
           </div>
 
           {/* Select Date */}
           <div className={s.dateSection}>
-            <p className={s.dateTitle}>Select Date *</p>
+            <p className={s.dateTitle}>Sélectionner une date *</p>
             <div className={s.dateScrollContainer}>
               <div className={s.dateButtonsContainer}>
                 {service.dates.length
@@ -343,7 +343,7 @@ export default function ServiceDetail() {
                         {d}
                       </button>
                     ))
-                  : <span className={s.noSlotsMessage}>No dates available</span>
+                  : <span className={s.noSlotsMessage}>Aucune date disponible</span>
                 }
               </div>
             </div>
@@ -351,7 +351,7 @@ export default function ServiceDetail() {
 
           {/* Select Time */}
           <div className={s.timeSection}>
-            <p className={s.timeTitle}>Select Time *</p>
+            <p className={s.timeTitle}>Sélectionner l'heure *</p>
             <div className={s.timeScrollContainer}>
               <div className={s.timeButtonsContainer}>
                 {availableSlots.length
@@ -366,7 +366,7 @@ export default function ServiceDetail() {
                         {slot}
                       </button>
                     ))
-                  : <span className={s.noSlotsMessage}>No slots for this date</span>
+                  : <span className={s.noSlotsMessage}>Aucun créneau pour cette date</span>
                 }
               </div>
             </div>
@@ -383,7 +383,7 @@ export default function ServiceDetail() {
             className={s.submitButton(formValid(), submitting)}
           >
             <Send size={15} />
-            {submitting ? "Booking…" : `Confirm Booking • ₹${service.price}`}
+            {submitting ? "Réservation en cours…" : `Confirmer la réservation • ₹${service.price}`}
           </button>
 
         </div>
@@ -396,7 +396,7 @@ export default function ServiceDetail() {
           {service.about && (
             <div className={s.aboutContainer}>
               <p className={s.aboutTitle}>
-                <FileText size={15} /> About This Service
+                <FileText size={15} /> À propos de ce service
               </p>
               <p className={s.aboutText}>{service.about}</p>
             </div>
@@ -409,7 +409,7 @@ export default function ServiceDetail() {
 
           {service.instructions.length > 0 && (
             <div className={s.instructionsContainer}>
-              <h3 className={s.instructionsTitle}>Pre-Test Instructions</h3>
+              <h3 className={s.instructionsTitle}>Instructions avant le test</h3>
               <ul className={s.instructionsList}>
                 {service.instructions.map((inst, k) => (
                   <li key={k}>{inst}</li>
@@ -419,16 +419,16 @@ export default function ServiceDetail() {
           )}
 
           <div className={s.summaryContainer}>
-            <h3 className={s.summaryTitle}>Booking Summary</h3>
+            <h3 className={s.summaryTitle}>Résumé de la réservation</h3>
             <div className={s.summaryContent}>
-              <p className={s.summaryItem}><strong>Name:</strong> {patientName.trim() || "Not filled"}</p>
-              <p className={s.summaryItem}><strong>Mobile:</strong> {mobile || "Not filled"}</p>
-              <p className={s.summaryItem}><strong>Age:</strong> {age || "Not filled"}</p>
-              <p className={s.summaryItem}><strong>Gender:</strong> {gender || "Not filled"}</p>
-              <p className={s.summaryItem}><strong>Date:</strong> {selectedDate || "Not selected"}</p>
-              <p className={s.summaryItem}><strong>Time:</strong> {selectedTime || "Not selected"}</p>
-              <p className={s.summaryItem}><strong>Payment:</strong> {paymentMethod}</p>
-              <p className={s.summaryItem}><strong>Price:</strong> ₹{service.price}</p>
+              <p className={s.summaryItem}><strong>Nom :</strong> {patientName.trim() || "Non rempli"}</p>
+              <p className={s.summaryItem}><strong>Téléphone :</strong> {mobile || "Non rempli"}</p>
+              <p className={s.summaryItem}><strong>Âge :</strong> {age || "Non rempli"}</p>
+              <p className={s.summaryItem}><strong>Sexe :</strong> {gender || "Non rempli"}</p>
+              <p className={s.summaryItem}><strong>Date :</strong> {selectedDate || "Non sélectionné"}</p>
+              <p className={s.summaryItem}><strong>Heure :</strong> {selectedTime || "Non sélectionné"}</p>
+              <p className={s.summaryItem}><strong>Paiement :</strong> {paymentMethod === "Cash" ? "Espèces" : "En ligne"}</p>
+              <p className={s.summaryItem}><strong>Prix :</strong> ₹{service.price}</p>
             </div>
           </div>
 
